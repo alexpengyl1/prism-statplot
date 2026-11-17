@@ -15,31 +15,48 @@ import numpy as np
 #   transform : applied before testing (None = test on the values as given)
 #   parametric: default test family
 #   mode      : "bar" only when zero on the axis is a real zero; otherwise "dot"
-DATA_PRESETS = {
-    "rna": dict(transform=None, parametric=True, mode="bar",
-                ylabel="Expression, log2(TPM + 1)",
-                note="values already log2(TPM + 1) or log2(CPM + 1); 0 = not detected"),
-    "protein": dict(transform=None, parametric=True, mode="dot",
-                    ylabel="Protein abundance, log2 intensity",
-                    note="values already log2 intensity (LFQ / TMT / DIA); 0 is not a real zero, so no bars"),
-    "qpcr": dict(transform="log2", parametric=True, mode="bar",
-                 ylabel="Relative expression (2^-ddCt)",
-                 note="values are 2^-ddCt fold changes; tested on log2 scale (= -ddCt)"),
-    "concentration": dict(transform="log2", parametric=True, mode="bar",
-                          ylabel="Concentration",
-                          note="positive linear readout (ELISA, cytokine, metabolite); tested on log2 scale"),
-    "western": dict(transform="log2", parametric=True, mode="bar",
-                    ylabel="Relative band intensity (normalised to loading control)",
-                    note="densitometry ratio to loading control; tested on log2 scale"),
-    "proportion": dict(transform=None, parametric=False, mode="bar",
-                       ylabel="Cells (%)",
-                       note="bounded 0-100 %; rank-based tests by default"),
-    "score": dict(transform=None, parametric=False, mode="dot",
-                  ylabel="Score",
-                  note="ordinal score (histology, clinical); rank-based tests, median shown"),
-    "generic": dict(transform=None, parametric=True, mode="bar",
-                    ylabel="", note="continuous readout tested as given"),
-}
+DATA_PRESETS = {'rna': {'transform': None,
+         'parametric': True,
+         'mode': 'bar',
+         'ylabel': 'Expression, log2(TPM + 1)',
+         'note': 'values already log2(TPM + 1) or log2(CPM + 1); 0 = not detected'},
+ 'protein': {'transform': None,
+             'parametric': True,
+             'mode': 'dot',
+             'ylabel': 'Protein abundance, log2 intensity',
+             'note': 'values already log2 intensity (LFQ / TMT / DIA); 0 is not a real zero, so no '
+                     'bars'},
+ 'qpcr': {'transform': 'log2',
+          'parametric': True,
+          'mode': 'bar',
+          'ylabel': 'Relative expression (2^-ddCt)',
+          'note': 'values are 2^-ddCt fold changes; tested on log2 scale (= -ddCt)'},
+ 'concentration': {'transform': 'log2',
+                   'parametric': True,
+                   'mode': 'bar',
+                   'ylabel': 'Concentration',
+                   'note': 'positive linear readout (ELISA, cytokine, metabolite); tested on log2 '
+                           'scale'},
+ 'western': {'transform': 'log2',
+             'parametric': True,
+             'mode': 'bar',
+             'ylabel': 'Relative band intensity (normalised to loading control)',
+             'note': 'densitometry ratio to loading control; tested on log2 scale'},
+ 'proportion': {'transform': None,
+                'parametric': False,
+                'mode': 'bar',
+                'ylabel': 'Cells (%)',
+                'note': 'bounded 0-100 %; rank-based tests by default'},
+ 'score': {'transform': None,
+           'parametric': False,
+           'mode': 'dot',
+           'ylabel': 'Score',
+           'note': 'ordinal score (histology, clinical); rank-based tests, median shown'},
+ 'generic': {'transform': None,
+             'parametric': True,
+             'mode': 'bar',
+             'ylabel': '',
+             'note': 'continuous readout tested as given'}}
 
 # Bright pastel bar + saturated point. The first two pairs are the reference look
 # (peach / salmon bars, coral points); further groups add equally bright hues.
@@ -359,7 +376,7 @@ def group_style(group_order, control=None, ordered=False, binding=None):
 
 
 def prism_group_plot(group_values, group_order, style=None, brackets=None, ylabel="",
-                     title="", save_path=None, seed=0, figsize=None, title_color=ACCENT,
+                     title="", save_path=None, seed=0, figsize=None, title_color=None,
                      mode="bar", summary="mean_sem", label="exact", show_n=True):
     """Bar (or dot) + error bar + jittered replicates + stacked significance brackets.
 
@@ -371,6 +388,8 @@ def prism_group_plot(group_values, group_order, style=None, brackets=None, ylabe
     """
     import matplotlib.pyplot as plt
 
+    if title_color is None:
+        title_color = ACCENT
     if style is None:
         style = group_style(group_order)
     brackets = brackets or []
