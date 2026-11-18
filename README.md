@@ -43,6 +43,7 @@ prism-statplot 是一个 Claude 技能，用来画 GraphPad Prism 风格的组�
 - [Choose a colour style](#choose-a-colour-style)
 - [Single-cell data: two levels of annotation, two levels of colour](#single-cell-data-two-levels-of-annotation-two-levels-of-colour)
 - [What Claude decides for you](#what-claude-decides-for-you)
+- [Examples](#examples)
 - [When not to use it](#when-not-to-use-it)
 - [For Python users](#for-python-users)
 - [Where the colours come from](#where-the-colours-come-from)
@@ -475,6 +476,29 @@ two-factor designs such as genotype × treatment.
   them.
 
 The full decision rules are in [SKILL.md](SKILL.md).
+
+## Examples
+
+Each figure is shown with a request that would produce it and what Claude
+chose. The first four use the `bright` style.
+
+| | |
+|---|---|
+| ![](examples/rna_two_groups_welch.png) | ![](examples/qpcr_dose_dunnett.png) |
+| **Asked:** "Compare gene X between the two groups, RNA-seq log2 values." · "比较两组的基因 X，RNA-seq 的 log2 值。"<br>**Chosen:** Welch's t-test, bars with mean ± SEM | **Asked:** "qPCR fold changes for a dose series. Compare each dose with the control." · "qPCR 的剂量序列，每个剂量都和对照比。"<br>**Chosen:** Dunnett's test on a log2 scale, the warm dose ramp |
+| ![](examples/qpcr_six_doses.png) | ![](examples/six_groups_palette.png) |
+| **Asked:** "Six increasing doses, each against dose 0." · "六个递增的剂量，都和 0 剂量比。"<br>**Chosen:** Dunnett's test, the ramp from yellow to wine red, stacked brackets | **Asked:** "Compare every pair of these six groups." · "这六组两两比较。"<br>**Chosen:** All pairs tested, only the significant ones drawn; one hue and one marker shape per group |
+
+A UMAP with its legend, for 20 cell types in six lineages in the `massier`
+style. The legend is grouped by lineage and lists the hex code of every cell
+type, so the same colours can be reused in other tools.
+
+**Asked:** "Colour the 20 cell types by lineage in the massier style and list
+the hex codes." · "用 massier 风格按大类给 20 个细胞类型配色，并列出色号。"
+
+![Twenty cell types in six lineages, with a legend grouped by lineage](examples/celltypes_20_umap.png)
+
+The points in this figure are synthetic.
 
 ## When not to use it
 
