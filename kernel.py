@@ -4,7 +4,9 @@ test, plot geometry matched to the data type. See SKILL.md for the decision rule
 
 compare_groups()   -> picks and runs the test, returns adjusted pairwise P values,
                       ready-made brackets, and a methods sentence
-group_style()      -> per-group colours / marker shapes (control, ordered, bound)
+set_theme()        -> one line to switch the colour theme of every later plot
+group_style()      -> per-group colours / marker shapes (control, ordered, bound, families)
+celltype_palette() -> one colour per cell type for 10 to 25 cell types (hue = lineage)
 prism_group_plot() -> draws the figure
 """
 
@@ -60,13 +62,96 @@ DATA_PRESETS = {'rna': {'transform': None,
 
 # Bright pastel bar + saturated point. The first two pairs are the reference look
 # (peach / salmon bars, coral points); further groups add equally bright hues.
+# Same values as THEMES["bright"]["pairs"]; kept for scripts that import it.
 DEFAULT_PALETTE = [
     ("#FAE2C5", "#DA6F4E"), ("#EFBAA0", "#DA6F4E"), ("#CDE8F2", "#3A93C3"),
     ("#D6EFD2", "#4FA85A"), ("#E7DDF4", "#8B62C2"), ("#FFF0B8", "#E0A800"),
     ("#F9D3E0", "#D9577F"), ("#D3F0EC", "#2BA69A"),
 ]
 ORDERED_ANCHORS = ["#F5C84C", "#F2953A", "#E0603A", "#B8322E", "#7E1F2A"]
-ACCENT = "#2D6869"   # teal: brackets, P values, axis title
+# Colour themes. One hue per group as (light, dark, ink):
+#   bar   = a light shade between light and dark
+#   point = dark; later members of a family step towards ink
+# "pairs" lists ready-made (bar, point) pairs when a theme has them; otherwise each hue gives
+# one mid-light bar and its dark point. "accent" colours brackets, P values and titles.
+# Hues are ordered strongest contrast first. Where a source colour is too light to read as a
+# point, the point uses a deeper shade of the same hue and the source colour shows in the bars.
+THEMES = {
+    # the original look: pale pastel bars, saturated points, teal accent;
+    # the first two pairs are the two-colour reference style (peach / salmon bars, coral points)
+    "bright": {
+        "pairs": [("#FAE2C5", "#DA6F4E"), ("#EFBAA0", "#DA6F4E"), ("#CDE8F2", "#3A93C3"),
+                  ("#D6EFD2", "#4FA85A"), ("#E7DDF4", "#8B62C2"), ("#FFF0B8", "#E0A800"),
+                  ("#F9D3E0", "#D9577F"), ("#D3F0EC", "#2BA69A")],
+        "ramps": [("#FAE2C5", "#DA6F4E", "#83432F"), ("#CDE8F2", "#3A93C3", "#235875"),
+                  ("#D6EFD2", "#4FA85A", "#2F6536"), ("#E7DDF4", "#8B62C2", "#533B74"),
+                  ("#FFF0B8", "#E0A800", "#866500"), ("#F9D3E0", "#D9577F", "#82344C"),
+                  ("#D3F0EC", "#2BA69A", "#1A645C")],
+        "accent": "#2D6869",
+    },
+    # Massier et al. 2023, Nat Commun 14, 1438 (human white adipose tissue atlas): blue, orange,
+    # green and purple ramps from the paper's figure code, with the yellow end of the orange
+    # ramp softened (the original #F3E55C is too saturated beside the other pale bars);
+    # brown and wine red extend the set.
+    "massier": {
+        "pairs": None,
+        "ramps": [("#C6DBEF", "#075A84", "#03304A"), ("#F7E08A", "#E8602D", "#A53A0C"),
+                  ("#A6DBBB", "#359566", "#17513A"), ("#ECD9F1", "#967BCE", "#553A9A"),
+                  ("#F0DBB9", "#815C0A", "#463204"), ("#FAD2D7", "#991B41", "#560D24")],
+        "accent": "#222222",
+    },
+    # ggsci "npg": the palette modelled on figures in Nature Publishing Group journals
+    # (nanxstats/ggsci, R/palettes.R). Six of its ten colours: red, navy, teal, brown, cyan, salmon.
+    "npg": {
+        "pairs": None,
+        "ramps": [("#F8CDC6", "#E64B35", "#852C1F"), ("#D8DDE7", "#3C5488", "#23314F"),
+                  ("#B8E4DD", "#00A087", "#005D4E"), ("#E5DFDA", "#7E6148", "#49382A"),
+                  ("#CDECF3", "#3A8CA0", "#22515D"), ("#FCE3DB", "#AD6E5A", "#644034")],
+        "accent": "#222222",
+    },
+    # ArchR "stallion" (Granja et al. 2021, Nat Genet 53, 403), the cell-type colours of
+    # Kuppe et al. 2022, Nature 608, 766 (human myocardial infarction). Bold and saturated.
+    # Seven of its twenty colours, in the palette's own order.
+    "stallion": {
+        "pairs": None,
+        "ramps": [("#F3C0C2", "#D51F26", "#7C1216"), ("#D4D5E1", "#272E6A", "#171B3D"),
+                  ("#C1DECA", "#208A42", "#135026"), ("#E7D4E9", "#89288F", "#4F1753"),
+                  ("#FCDBC4", "#C06322", "#6F3914"), ("#CEE3E5", "#0C727C", "#074248"),
+                  ("#EDD6E7", "#C06CAB", "#6F3F63")],
+        "accent": "#222222",
+    },
+    # Wu et al. 2021, Nat Genet 53, 1334 (human breast cancer atlas): the eight major cell-type
+    # colours, which are the Okabe-Ito colour-blind-safe set. The four that stay clearly apart
+    # as point colours: blue, vermilion, green, pink.
+    "okabe": {
+        "pairs": None,
+        "ramps": [("#CCE3F0", "#0072B2", "#004267"), ("#F3D2B8", "#D55E00", "#7C3700"),
+                  ("#B8E4D8", "#009E73", "#005C43"), ("#F1D9E6", "#CC79A7", "#764661")],
+        "accent": "#222222",
+    },
+    # Pijuan-Sala et al. 2019, Nature 566, 490 (mouse gastrulation atlas): seven of the 37
+    # cell-type colours, picked for contrast. Soft and earthy, with a few strong accents.
+    "gastrulation": {
+        "pairs": None,
+        "ramps": [("#CFDBEB", "#0F4A9C", "#092B5A"), ("#FBCDC1", "#EF4E22", "#8B2D14"),
+                  ("#BDE2E0", "#139992", "#0B5955"), ("#DED7E8", "#8870AD", "#4F4164"),
+                  ("#E4D4D3", "#9E6762", "#5C3C39"), ("#D4E7C9", "#65A83E", "#3B6124"),
+                  ("#D7DCD3", "#354E23", "#1F2D14")],
+        "accent": "#222222",
+    },
+    # Zhang et al. 2019, Nat Immunol 20, 928 (rheumatoid arthritis synovium): one light-to-dark
+    # ramp per lineage (fibroblasts blue, B cells red, T cells teal, monocytes magenta), plus the
+    # T-cell brown. The blue point colour is the midpoint of the paper's two darker blues.
+    "amp": {
+        "pairs": None,
+        "ramps": [("#DEEBF7", "#3A6FA0", "#08306B"), ("#FCBBA1", "#CB181D", "#67000D"),
+                  ("#C7EAE5", "#35978F", "#003C30"), ("#FDE0EF", "#AE017E", "#49006A"),
+                  ("#E8DCCE", "#8C510A", "#512F06")],
+        "accent": "#222222",
+    },
+}
+THEME_STATE = {"name": "bright"}   # current theme; change it with set_theme()
+ACCENT = "#2D6869"   # teal accent of the "bright" theme (kept for scripts that import it)
 MARKER_SHAPES = ["o", "s", "^", "v", "D", "P", "X", "h"]
 
 
@@ -290,7 +375,11 @@ def compare_groups(group_values, group_order, data_type="generic", paired=False,
                 ci = group_order.index(control)
                 others = [g for i, g in enumerate(groups) if i != ci]
                 names = [g for i, g in enumerate(group_order) if i != ci]
-                dn = stats.dunnett(*others, control=groups[ci])
+                # Dunnett's P values come from a randomised integration; a fixed seed makes them
+                # the same on every run (the argument is `rng` in SciPy >= 1.15, `random_state` before)
+                import inspect
+                seed_name = "rng" if "rng" in inspect.signature(stats.dunnett).parameters else "random_state"
+                dn = stats.dunnett(*others, control=groups[ci], **{seed_name: 0})
                 pairs = [(control, nm, float(p)) for nm, p in zip(names, dn.pvalue)]
                 method = "one-way ANOVA followed by Dunnett's multiple comparisons test"
             else:
@@ -333,14 +422,118 @@ def lighten(hex_color, amount=0.75):
     return "#{:02X}{:02X}{:02X}".format(*mixed)
 
 
-def group_style(group_order, control=None, ordered=False, binding=None):
+def mix(hex_a, hex_b, t):
+    """Blend two colours in RGB; t = 0 gives hex_a, t = 1 gives hex_b."""
+    a = [int(hex_a[k:k + 2], 16) for k in (1, 3, 5)]
+    b = [int(hex_b[k:k + 2], 16) for k in (1, 3, 5)]
+    return "#{:02X}{:02X}{:02X}".format(*[int(round(x + (y - x) * t)) for x, y in zip(a, b)])
+
+
+def oklab(hex_color):
+    """OKLab coordinates (L, a, b) of a colour; L runs from 0 = black to 1 = white."""
+    srgb = [int(hex_color[k:k + 2], 16) / 255 for k in (1, 3, 5)]
+    r, g, b = [c / 12.92 if c <= 0.04045 else ((c + 0.055) / 1.055) ** 2.4 for c in srgb]
+    l = (0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b) ** (1 / 3)
+    m = (0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b) ** (1 / 3)
+    s = (0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b) ** (1 / 3)
+    return (0.2104542553 * l + 0.7936177850 * m - 0.0040720468 * s,
+            1.9779984951 * l - 2.4285922050 * m + 0.4505937099 * s,
+            0.0259040371 * l + 0.7827717662 * m - 0.8086757660 * s)
+
+
+def lightness(hex_color):
+    """OKLab lightness of a colour: 0 = black, 1 = white."""
+    return oklab(hex_color)[0]
+
+
+def oklch(hex_color):
+    """(lightness, chroma, hue angle in degrees) of a colour."""
+    L, a, b = oklab(hex_color)
+    return L, math.hypot(a, b), math.degrees(math.atan2(b, a)) % 360
+
+
+def from_oklch(L, chroma, hue):
+    """Hex colour with this lightness, chroma and hue; chroma is reduced until the colour fits in sRGB."""
+    def linear_rgb(c):
+        a, b = c * math.cos(math.radians(hue)), c * math.sin(math.radians(hue))
+        l = (L + 0.3963377774 * a + 0.2158037573 * b) ** 3
+        m = (L - 0.1055613458 * a - 0.0638541728 * b) ** 3
+        s = (L - 0.0894841775 * a - 1.2914855480 * b) ** 3
+        return (4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s,
+                -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s,
+                -0.0041960863 * l - 0.7034186147 * m + 1.7076147010 * s)
+
+    def fits(c):
+        return all(-1e-4 <= x <= 1 + 1e-4 for x in linear_rgb(c))
+
+    if not fits(chroma):
+        lo, hi = 0.0, chroma
+        for _ in range(20):
+            mid = (lo + hi) / 2
+            lo, hi = (mid, hi) if fits(mid) else (lo, mid)
+        chroma = lo
+    rgb = [min(max(x, 0.0), 1.0) for x in linear_rgb(chroma)]
+    rgb = [12.92 * x if x <= 0.0031308 else 1.055 * x ** (1 / 2.4) - 0.055 for x in rgb]
+    return "#{:02X}{:02X}{:02X}".format(*[int(round(255 * x)) for x in rgb])
+
+
+def shade_at(light, dark, target):
+    """Colour between `light` and `dark` whose lightness is `target` (clamped to the two ends)."""
+    lo, hi = 0.0, 1.0
+    for _ in range(20):
+        mid = (lo + hi) / 2
+        if lightness(mix(light, dark, mid)) > target:
+            lo = mid
+        else:
+            hi = mid
+    return mix(light, dark, (lo + hi) / 2)
+
+
+def set_theme(name):
+    """Choose the colour theme used by every later group_style() / prism_group_plot() call."""
+    if name not in THEMES:
+        raise KeyError("unknown theme '{}'; choose one of: {}".format(name, ", ".join(THEMES)))
+    THEME_STATE["name"] = name
+
+
+def group_style(group_order, control=None, ordered=False, binding=None, families=None, theme=None):
     """Per-group dict(bar, marker, marker_shape, edge).
 
-    control : this group is drawn neutral (white bar, grey points); others take palette hues
+    theme   : name of a colour theme in THEMES for this call; default = the one set by set_theme()
+
+    control : this group takes the first hue of the theme; the others continue down the theme
     ordered : groups are a dose / time series -> one hue ramp, light to dark
     binding : {group: hex} already fixed elsewhere (e.g. cell-type colours) -> reused
+    families: {group: family} for two-level designs (genotype x treatment, cell class x subtype)
+              -> one hue per family, members shaded light to dark in plotting order.
+              Up to 3 members per family keep neighbouring shades clearly apart.
     """
+    colours = THEMES[theme or THEME_STATE["name"]]
+    ramps = colours["ramps"]
+    # ready-made (bar, point) pairs, or per hue one mid-light bar with the dark point;
+    # when the groups outnumber the hues, a second round uses a deeper bar with the ink point
+    pairs = colours["pairs"] or ([(mix(light, dark, 0.25), dark) for light, dark, ink in ramps] +
+                                 [(shade_at(light, dark, 0.70), ink) for light, dark, ink in ramps])
     style = {}
+    if families is not None:
+        names = list(dict.fromkeys(families[g] for g in group_order))   # hue order = first appearance
+        if len(names) > len(ramps):
+            raise ValueError("families: this theme has {} hues; merge some families or split the figure".format(
+                len(ramps)))
+        for f, name in enumerate(names):
+            light, dark, ink = ramps[f]
+            members = [g for g in group_order if families[g] == name]
+            m = len(members)
+            for j, g in enumerate(members):
+                if m == 1:      # a single member: one mid-light bar and the dark point
+                    bar, point = mix(light, dark, 0.25), dark
+                else:           # bars step from lightness 0.86 down to 0.68, points from dark to ink
+                    bar = shade_at(light, dark, 0.86 - 0.18 * j / (m - 1))
+                    point = mix(dark, ink, j / (m - 1))
+                style[g] = dict(bar=bar, marker=point,
+                                marker_shape=MARKER_SHAPES[group_order.index(g) % len(MARKER_SHAPES)],
+                                edge=None)
+        return style
     if binding is not None:
         for i, g in enumerate(group_order):
             style[g] = dict(bar=lighten(binding[g], 0.72), marker=binding[g],
@@ -364,21 +557,81 @@ def group_style(group_order, control=None, ordered=False, binding=None):
     j = 0
     for i, g in enumerate(group_order):
         if g == control:
-            bar, mk = DEFAULT_PALETTE[0]
+            bar, mk = pairs[0]
             style[g] = dict(bar=bar, marker=mk, marker_shape="o", edge=None)
             continue
         start = 1 if control in group_order else 0
-        bar, mk = DEFAULT_PALETTE[(j + start) % len(DEFAULT_PALETTE)]
+        bar, mk = pairs[(j + start) % len(pairs)]
         style[g] = dict(bar=bar, marker=mk, marker_shape=MARKER_SHAPES[(j + start) % len(MARKER_SHAPES)],
                         edge=None)
         j += 1
     return style
 
 
+def celltype_palette(celltypes, lineages=None, theme=None, other="#D3D3D3"):
+    """{cell type: hex} for many cell types (about 10 to 25): one hue per lineage, shades within it.
+
+    celltypes: cell types in legend order; within a lineage the first is the lightest
+    lineages : {cell type: lineage}, e.g. {"CD4 T": "T/NK", "CD8 T": "T/NK", "B": "B"};
+               a cell type whose lineage is None takes the grey `other` colour.
+               Leave it out to colour the coarse level itself: each name then takes the main
+               colour of its own hue, e.g. celltype_palette(["T/NK", "Myeloid", "B"]).
+               Hues are given in order of first appearance, so list the coarse names in the
+               order in which they first appear among the fine cell types.
+    theme    : name of a colour theme in THEMES for this call; default = the one set by set_theme()
+
+    The dict goes straight into scanpy (palette=), seaborn (palette=) and
+    group_style(order, binding=...), so UMAP, violin and bar plots share one colour per cell type.
+
+    Within a lineage the shades differ in lightness AND in hue, because shades of one hue that
+    differ only in lightness cannot be told apart as small points on a UMAP:
+      lightness: evenly spaced between 0.86 and 0.42, at most 0.14 apart (no near-black shades)
+      hue      : shifts by up to 50 degrees from the lightest to the darkest shade, centred on the
+                 lineage hue. Cool hues run from the cyan side to the violet side (blue: cyan ->
+                 blue -> indigo); warm hues from the yellow side to the red side.
+                 A ramp that already changes hue (yellow -> orange -> red) is left as it is.
+    Up to 5 cell types per lineage stay clearly apart.
+    """
+    if lineages is None:      # coarse level: every name is its own lineage; None (unassigned) is skipped
+        celltypes = [c for c in celltypes if c is not None]
+        lineages = {c: c for c in celltypes}
+    ramps = THEMES[theme or THEME_STATE["name"]]["ramps"]
+    names = list(dict.fromkeys(lineages[c] for c in celltypes if lineages[c] is not None))
+    if len(names) > len(ramps):
+        raise ValueError("celltype_palette: this theme has {} hues but there are {} lineages; "
+                         "merge some lineages or choose a theme with more hues".format(len(ramps), len(names)))
+    palette = {c: other for c in celltypes}
+    for f, name in enumerate(names):
+        light, dark, ink = ramps[f]
+        members = [c for c in celltypes if lineages[c] == name]
+        m = len(members)
+        if m == 1:      # a single cell type takes the main colour of its hue
+            palette[members[0]] = dark
+            continue
+        top, bottom = min(0.86, lightness(light)), max(0.42, lightness(ink))
+        step = min((top - bottom) / (m - 1), 0.14)
+        first = (top + bottom) / 2 + step * (m - 1) / 2      # shades are centred in the range
+        dark_chroma, dark_hue = oklch(dark)[1:]
+        own_change = (oklch(ink)[2] - oklch(light)[2] + 180) % 360 - 180    # hue change the ramp already has
+        sweep = 0 if abs(own_change) > 25 else 50 * min(1, (m - 1) / 4)     # smaller for 2 to 4 cell types
+        direction = 1 if 110 <= dark_hue <= 330 else -1                     # cool hues / warm hues
+        for j, c in enumerate(members):
+            target = first - step * j
+            shade = shade_at(light, dark, target) if target >= lightness(dark) else shade_at(dark, ink, target)
+            if sweep:
+                position = j / (m - 1) - 0.5                 # -0.5 lightest ... +0.5 darkest
+                shade = from_oklch(target, max(oklch(shade)[1], dark_chroma),
+                                   (dark_hue + direction * position * sweep) % 360)
+            palette[c] = shade
+    return palette
+
+
 def prism_group_plot(group_values, group_order, style=None, brackets=None, ylabel="",
                      title="", save_path=None, seed=0, figsize=None, title_color=None,
-                     mode="bar", summary="mean_sem", label="exact", show_n=True):
+                     mode="bar", summary="mean_sem", label="exact", show_n=True, theme=None):
     """Bar (or dot) + error bar + jittered replicates + stacked significance brackets.
+
+    theme   : colour theme for the accent (brackets, P values, titles) and the default style
 
     mode    : "bar" draws a filled bar from 0 (only when 0 is a real zero);
               "dot" draws a short mean/median line, y-axis fitted to the data
@@ -389,9 +642,9 @@ def prism_group_plot(group_values, group_order, style=None, brackets=None, ylabe
     import matplotlib.pyplot as plt
 
     if title_color is None:
-        title_color = ACCENT
+        title_color = THEMES[theme or THEME_STATE["name"]]["accent"]
     if style is None:
-        style = group_style(group_order)
+        style = group_style(group_order, theme=theme)
     brackets = brackets or []
     missing = [g for g in group_order if g not in group_values]
     if missing:
